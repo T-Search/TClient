@@ -42,6 +42,13 @@
             <artifactId>guava</artifactId>
             <version>31.1-jre</version>
         </dependency>
-
     </dependencies>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/T-Search/TClient</url>
+        </repository>
+    </distributionManagement>
 </project>
