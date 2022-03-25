@@ -25,6 +25,7 @@ public class ClipClient extends GenericClient<Clip> {
         for (int round = 0; round < Math.ceil(((float) clipsIds.size()) / batchSize); round++) {
             try {
                 List<String> list = clipsIds.subList(round * batchSize, Math.min(clipsIds.size(), (round + 1) * batchSize));
+                LOGGER.debug("Get active Clips index " + round * batchSize + " from " + clipsIds.size());
                 this.clientInstance.reLoginIfNecessary();
                 HttpResponse<Response<Clip>> response = Unirest
                         .get("https://api.twitch.tv/helix/clips")
