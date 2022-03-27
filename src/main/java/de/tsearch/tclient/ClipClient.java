@@ -1,19 +1,21 @@
 package de.tsearch.tclient;
 
+import de.tsearch.tclient.data.PagedResponse;
 import de.tsearch.tclient.http.respone.Clip;
-import de.tsearch.tclient.http.respone.Response;
-import de.tsearch.tclient.http.respone.TimeWindow;
-import kong.unirest.*;
+import kong.unirest.GetRequest;
+import kong.unirest.HttpRequest;
+import kong.unirest.Unirest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public class ClipClient extends GenericClient<Clip> {
-    private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     public ClipClient(TClientInstance clientInstance) {
         super(clientInstance, Clip.class);
@@ -21,73 +23,68 @@ public class ClipClient extends GenericClient<Clip> {
 
     public List<Clip> getAllActiveClipsUncached(List<String> clipsIds) {
         ArrayList<Clip> clips = new ArrayList<>();
+        List<Future<List<Clip>>> futures = new ArrayList<>();
         final int batchSize = 100;
         for (int round = 0; round < Math.ceil(((float) clipsIds.size()) / batchSize); round++) {
+            List<String> list = clipsIds.subList(round * batchSize, Math.min(clipsIds.size(), (round + 1) * batchSize));
+            GetRequest getRequest = Unirest
+                    .get("https://api.twitch.tv/helix/clips")
+                    .queryString("first", batchSize)
+                    .queryString("id", list);
+            futures.add(this.clientInstance.executorService.submit(() -> this.executeRequest(getRequest).getData()));
+        }
+
+        for (Future<List<Clip>> future : futures) {
             try {
-                List<String> list = clipsIds.subList(round * batchSize, Math.min(clipsIds.size(), (round + 1) * batchSize));
-                LOGGER.debug("Get active Clips index " + round * batchSize + " from " + clipsIds.size());
-                this.clientInstance.reLoginIfNecessary();
-                HttpResponse<Response<Clip>> response = Unirest
-                        .get("https://api.twitch.tv/helix/clips")
-                        .headers(this.clientInstance.standardHeader)
-                        .queryString("first", batchSize)
-                        .queryString("id", list)
-                        .asObject(new GenericType<>() {
-                        });
-                if (response.getStatus() == 200) {
-                    clips.addAll(response.getBody().getData());
-                }
-            } catch (UnirestException e) {
-                e.printStackTrace();
+                List<Clip> list = future.get();
+                if (list != null) clips.addAll(list);
+            } catch (ExecutionException | InterruptedException ignored) {
             }
         }
 
         return clips;
     }
 
-    public List<Clip> getAllClipsInWindowUncached(long broadcasterId, Date from, Date to) {
-        return this.getAllClipsInWindowUncached(broadcasterId, from, to, TimeWindow.YEAR);
+    public List<Clip> getAllClipsInWindowUncached(long broadcasterId, Instant from, Instant to) {
+        return getAllClipsInWindowUncached(broadcasterId, from, to, 0);
     }
 
-    public List<Clip> getAllClipsInWindowUncached(long broadcasterId, Date from, Date to, TimeWindow baseWindow) {
-        LOGGER.debug("Start searching for clips with window " + baseWindow);
-        Date currentFrom = from;
-        List<Clip> clips = new ArrayList<>();
+    public List<Clip> getAllClipsInWindowUncached(long broadcasterId, Instant from, Instant to, int retryCount) {
+        PagedResponse<Clip> currentClips = getAllClipsInWindowWithPaging(broadcasterId, from, to);
 
-        while (currentFrom != to) {
-            Date currentTo = getMinDate(baseWindow.getEndOfWindow(currentFrom), to);
-            LOGGER.debug("Get clips in window " + rfcDate.format(currentFrom) + " - " + rfcDate.format(currentTo));
-            List<Clip> currentClips = getAllClipsInWindowWithPaging(broadcasterId, currentFrom, currentTo);
-            if (currentClips.size() >= 1000) {
-                LOGGER.warn("To many clips in time window " + baseWindow + ". " + currentClips.size() + " clips founded");
-                Optional<TimeWindow> smallerWindow = baseWindow.getSmallerWindow();
-                if (smallerWindow.isPresent()) {
-                    currentClips = getAllClipsInWindowUncached(broadcasterId, currentFrom, currentTo, smallerWindow.get());
-                } else {
-                    LOGGER.error("Cannot search more accurately for clips for broadcaster id " + broadcasterId + " from " + rfcDate.format(currentFrom) + " to " + rfcDate.format(currentTo));
-                }
+        if (currentClips.getData().size() >= 1000) {
+            logger.debug("Found {} clips {} - {}. Split request", currentClips.getData().size(), from, to);
+            System.out.printf("Found %s clips %s - %s. Split request\n", currentClips.getData().size(), from, to);
+            //Devide
+            long diff = to.getEpochSecond() - from.getEpochSecond();
+            Instant middle = Instant.ofEpochSecond(from.getEpochSecond() + (diff / 2));
+
+            Future<List<Clip>> part1 = this.clientInstance.executorService.submit(() -> getAllClipsInWindowUncached(broadcasterId, from, middle));
+            Future<List<Clip>> part2 = this.clientInstance.executorService.submit(() -> getAllClipsInWindowUncached(broadcasterId, middle, to));
+
+            List<Clip> clips = new ArrayList<>();
+            try {
+                clips.addAll(part1.get());
+                clips.addAll(part2.get());
+            } catch (InterruptedException | ExecutionException e) {
+                if (retryCount > 2) throw new RuntimeException(e);
+                return getAllClipsInWindowUncached(broadcasterId, from, to, ++retryCount);
             }
-            clips.addAll(currentClips);
-            currentFrom = currentTo;
+            return clips;
+        } else {
+            logger.debug("Found {} clips {} - {}", currentClips.getData().size(), from, to);
+            System.out.printf("Found %s clips %s - %s\n", currentClips.getData().size(), from, to);
+            return currentClips.getData();
         }
-        return clips;
     }
 
-    private List<Clip> getAllClipsInWindowWithPaging(long broadcasterId, Date from, Date to) {
+    private PagedResponse<Clip> getAllClipsInWindowWithPaging(long broadcasterId, Instant from, Instant to) {
         HttpRequest<?> httpRequest = Unirest.get("https://api.twitch.tv/helix/clips")
                 .queryString("broadcaster_id", broadcasterId)
                 .queryString("first", 100)
-                .queryString("started_at", rfcDate.format(from))
-                .queryString("ended_at", rfcDate.format(to));
+                .queryString("started_at", from.toString())
+                .queryString("ended_at", to.toString());
 
-        return requestWithCursorFollowing(httpRequest);
-    }
-
-    private Date getMinDate(Date d1, Date d2) {
-        if (d1.before(d2)) {
-            return d1;
-        } else {
-            return d2;
-        }
+        return requestWithCursorFollowing(httpRequest, Integer.MAX_VALUE);
     }
 }

@@ -1,6 +1,7 @@
 package de.tsearch.tclient;
 
 import de.tsearch.tclient.data.EventEnum;
+import de.tsearch.tclient.data.PagedResponse;
 import de.tsearch.tclient.http.respone.webhook.Condition;
 import de.tsearch.tclient.http.respone.webhook.Subscription;
 import de.tsearch.tclient.http.respone.webhook.Transport;
@@ -10,7 +11,6 @@ import kong.unirest.UnirestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.UUID;
 
 public class WebhookClient extends GenericClient<Subscription> {
@@ -20,8 +20,8 @@ public class WebhookClient extends GenericClient<Subscription> {
         super(clientInstance, Subscription.class);
     }
 
-    public List<Subscription> getAllSubscriptions() {
-        return requestWithCursorFollowing(Unirest.get("https://api.twitch.tv/helix/eventsub/subscriptions"));
+    public PagedResponse<Subscription> getAllSubscriptions() {
+        return requestWithCursorFollowing(Unirest.get("https://api.twitch.tv/helix/eventsub/subscriptions"), Integer.MAX_VALUE);
     }
 
     public void requestNewWebhook(long broadcasterId, EventEnum eventEnum, String secret, String webhookCallback) throws UnirestException {
@@ -39,11 +39,12 @@ public class WebhookClient extends GenericClient<Subscription> {
         subscription.setTransport(transport);
 
         this.clientInstance.reLoginIfNecessary();
+        this.clientInstance.rateLimiter.acquire();
         HttpResponse<String> response = Unirest
                 .post("https://api.twitch.tv/helix/eventsub/subscriptions")
                 .headers(this.clientInstance.standardHeader)
                 .header("Content-Type", "application/json")
-                .body(this.gson.toJson(subscription))
+                .body(this.clientInstance.gson.toJson(subscription))
                 .asString();
         if (response.getStatus() == 202) {
             LOGGER.info("Requested new webhook for broadcaster id " + broadcasterId + " for event " + eventEnum);
@@ -55,6 +56,7 @@ public class WebhookClient extends GenericClient<Subscription> {
     public void deleteWebhook(UUID webhookId) {
         try {
             this.clientInstance.reLoginIfNecessary();
+            this.clientInstance.rateLimiter.acquire();
             Unirest
                     .delete("https://api.twitch.tv/helix/eventsub/subscriptions")
                     .headers(this.clientInstance.standardHeader).queryString("id", webhookId.toString())

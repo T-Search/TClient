@@ -3,12 +3,12 @@ package de.tsearch.tclient;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import de.tsearch.tclient.data.PagedResponse;
 import de.tsearch.tclient.http.respone.Game;
 import kong.unirest.Unirest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
@@ -39,10 +39,10 @@ public class GameClient extends GenericClient<Game> {
     }
 
     public Optional<Game> getGameByIdUncached(long gameId) {
-        List<Game> games = requestWithCursorFollowing(Unirest.get("https://api.twitch.tv/helix/games").queryString("id", gameId), 1);
+        PagedResponse<Game> games = executeRequest(Unirest.get("https://api.twitch.tv/helix/games").queryString("id", gameId));
 
-        if (games.size() == 1) {
-            return Optional.of(games.get(0));
+        if (games.getData().size() == 1) {
+            return Optional.of(games.getData().get(0));
         } else {
             return Optional.empty();
         }

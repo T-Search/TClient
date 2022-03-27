@@ -1,5 +1,6 @@
 package de.tsearch.tclient;
 
+import de.tsearch.tclient.data.PagedResponse;
 import de.tsearch.tclient.http.respone.Stream;
 import kong.unirest.GetRequest;
 import kong.unirest.Unirest;
@@ -10,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class StreamClient extends GenericClient<Stream> {
-    private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     public StreamClient(TClientInstance clientInstance) {
         super(clientInstance, Stream.class);
@@ -25,17 +26,17 @@ public class StreamClient extends GenericClient<Stream> {
                     .get("https://api.twitch.tv/helix/streams")
                     .queryString("first", batchSize)
                     .queryString("user_id", list);
-            onlineStreams.addAll(requestWithCursorFollowing(request, 1));
+            onlineStreams.addAll(executeRequest(request, 0, 0).getData());
         }
 
         return onlineStreams;
     }
 
-    public List<Stream> getStreams() {
+    public PagedResponse<Stream> getStreams() {
         GetRequest request = Unirest
                 .get("https://api.twitch.tv/helix/streams")
                 .queryString("first", 100)
                 .queryString("language", "de");
-        return requestWithCursorFollowing(request, 5);
+        return executeRequest(request, 0, 0);
     }
 }

@@ -1,5 +1,6 @@
 package de.tsearch.tclient;
 
+import com.google.gson.Gson;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,6 +11,7 @@ import java.util.Objects;
 public class Config {
     private final String clientId;
     private final String clientSecret;
+    private final Gson gson;
     /**
      * Is login credential provided, to relogin.
      */
@@ -21,9 +23,10 @@ public class Config {
     @Setter
     private int maxCursorFollows;
 
-    private Config(String clientId, String clientSecret, String accessToken, boolean loginCredentials, int maxCursorFollows) {
+    private Config(String clientId, String clientSecret, Gson gson, String accessToken, boolean loginCredentials, int maxCursorFollows) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+        this.gson = gson;
         this.accessToken = accessToken;
         this.loginCredentials = loginCredentials;
         this.maxCursorFollows = maxCursorFollows;
@@ -37,6 +40,8 @@ public class Config {
         private String clientId;
         private String clientSecret;
         private String accessToken;
+
+        private Gson gson = new Gson();
 
         private int maxCursorFollows = 20;
 
@@ -73,13 +78,18 @@ public class Config {
             return this;
         }
 
+        public ConfigBuilder setGsonInstance(Gson gson) {
+            this.gson = gson;
+            return this;
+        }
+
         public Config build() {
             Objects.requireNonNull(this.clientId, "Client Id cannot be null");
             if (this.clientSecret == null && this.accessToken == null) {
                 throw new NullPointerException("Needed access token or client secret");
             }
 
-            return new Config(this.clientId, this.clientSecret, this.accessToken, this.clientSecret != null, this.maxCursorFollows);
+            return new Config(this.clientId, this.clientSecret, this.gson, this.accessToken, this.clientSecret != null, this.maxCursorFollows);
         }
     }
 }

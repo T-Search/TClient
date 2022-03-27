@@ -1,5 +1,7 @@
 package de.tsearch.tclient;
 
+import com.google.common.util.concurrent.RateLimiter;
+import com.google.gson.Gson;
 import de.tsearch.tclient.http.respone.LoginResponse;
 import kong.unirest.HttpResponse;
 import kong.unirest.Unirest;
@@ -7,9 +9,16 @@ import kong.unirest.Unirest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class TClientInstance {
     private final Config config;
+
+    protected final Gson gson;
+
+    protected final RateLimiter rateLimiter = RateLimiter.create(500);
+    protected final ExecutorService executorService = Executors.newCachedThreadPool();
 
     protected Map<String, String> standardHeader;
 
@@ -20,6 +29,7 @@ public class TClientInstance {
         } else {
             this.regenerateStandardHeader();
         }
+        this.gson = this.config.getGson();
     }
 
     /**
@@ -30,6 +40,7 @@ public class TClientInstance {
      */
     public synchronized boolean reLogin() {
         if (this.config.isLoginCredentials()) {
+            rateLimiter.acquire();
             HttpResponse<LoginResponse> response = Unirest.post("https://id.twitch.tv/oauth2/token")
                     .queryString("client_id", this.config.getClientId())
                     .queryString("client_secret", this.config.getClientSecret())
