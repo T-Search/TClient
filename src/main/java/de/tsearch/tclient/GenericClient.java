@@ -73,7 +73,7 @@ public class GenericClient<T> {
             }
             builder.data(data);
 
-            if (response.getBody().getPagination().getCursor() != null) {
+            if (response.getBody().getPagination() != null && response.getBody().getPagination().getCursor() != null) {
                 builder.nextPage(response.getBody().getPagination().getCursor());
                 builder.hasNext(true);
             } else {
