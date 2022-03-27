@@ -66,6 +66,9 @@ public class GenericClient<T> {
         builder.cursorFollows(cursorDepth);
         builder.maxCursorFollows(maxCursorDepth);
         builder.statusCode(response.getStatus());
+        String ratelimit = response.getHeaders().getFirst("Ratelimit-Remaining");
+        if (ratelimit != null) logger.trace("Ratelimit-Remaining: " + ratelimit);
+        logger.trace("Status-Code: " + response.getStatus());
         if (response.isSuccess()) {
             List<T> data = new ArrayList<>(response.getBody().getData().size());
             for (JsonElement jsonElement : response.getBody().getData()) {

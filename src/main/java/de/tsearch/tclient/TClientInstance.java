@@ -17,7 +17,7 @@ public class TClientInstance {
 
     protected final Gson gson;
 
-    protected final RateLimiter rateLimiter = RateLimiter.create(500);
+    protected final RateLimiter rateLimiter = RateLimiter.create(10);
     protected final ExecutorService executorService = Executors.newCachedThreadPool();
 
     protected Map<String, String> standardHeader;
