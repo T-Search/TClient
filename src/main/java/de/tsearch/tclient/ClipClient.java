@@ -54,7 +54,6 @@ public class ClipClient extends GenericClient<Clip> {
 
         if (currentClips.getData().size() >= 1000) {
             logger.debug("Found {} clips {} - {}. Split request", currentClips.getData().size(), from, to);
-            System.out.printf("Found %s clips %s - %s. Split request\n", currentClips.getData().size(), from, to);
             //Devide
             long diff = to.getEpochSecond() - from.getEpochSecond();
             Instant middle = Instant.ofEpochSecond(from.getEpochSecond() + (diff / 2));
@@ -73,7 +72,6 @@ public class ClipClient extends GenericClient<Clip> {
             return clips;
         } else {
             logger.debug("Found {} clips {} - {}", currentClips.getData().size(), from, to);
-            System.out.printf("Found %s clips %s - %s\n", currentClips.getData().size(), from, to);
             return currentClips.getData();
         }
     }
