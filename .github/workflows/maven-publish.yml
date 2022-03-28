@@ -6,7 +6,7 @@ name: Maven Publish
 on:
   workflow_dispatch:
   push:
-    branches: snapshot
+    branches: [ master, snapshot ]
   release:
     types: [created]
 
