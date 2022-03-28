@@ -11,6 +11,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TClientInstance {
     private final Config config;
@@ -18,7 +20,14 @@ public class TClientInstance {
     protected final Gson gson;
 
     protected final RateLimiter rateLimiter = RateLimiter.create(10);
-    protected final ExecutorService executorService = Executors.newCachedThreadPool();
+    protected final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2, new ThreadFactory() {
+        private final AtomicInteger counter = new AtomicInteger(1);
+
+        @Override
+        public Thread newThread(Runnable runnable) {
+            return new Thread(runnable, "tclient-thread-" + counter.getAndIncrement());
+        }
+    });
 
     protected Map<String, String> standardHeader;
 
