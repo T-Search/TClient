@@ -20,7 +20,7 @@ public class TClientInstance {
     protected final Gson gson;
 
     protected final RateLimiter rateLimiter = RateLimiter.create(10);
-    protected final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2, new ThreadFactory() {
+    protected final ExecutorService executorService = Executors.newCachedThreadPool(new ThreadFactory() {
         private final AtomicInteger counter = new AtomicInteger(1);
 
         @Override
