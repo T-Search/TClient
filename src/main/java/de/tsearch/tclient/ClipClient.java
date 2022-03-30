@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class ClipClient extends GenericClient<Clip> {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -32,6 +33,8 @@ public class ClipClient extends GenericClient<Clip> {
                     .queryString("first", batchSize)
                     .queryString("id", list);
             futures.add(this.clientInstance.executorService.submit(() -> this.executeRequest(getRequest).getData()));
+            ThreadPoolExecutor threadPoolExecutor = (ThreadPoolExecutor) this.clientInstance.executorService;
+            logger.debug("Active task count: {}", threadPoolExecutor.getActiveCount());
         }
 
         for (Future<List<Clip>> future : futures) {
