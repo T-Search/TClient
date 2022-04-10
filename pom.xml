@@ -6,7 +6,7 @@
 
     <groupId>de.tsearch</groupId>
     <artifactId>tclient</artifactId>
-    <version>0.0.5-SNAPSHOT</version>
+    <version>0.0.6-SNAPSHOT</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
