@@ -19,12 +19,12 @@ public class HighlightClient extends GenericClient<Video> {
         super(clientInstance, Video.class);
     }
 
-    public List<Video> getAllActiveHighlightsUncached(List<String> clipsIds) {
-        ArrayList<Video> clips = new ArrayList<>();
+    public List<Video> getAllActiveHighlightsUncached(List<Long> highlightIds) {
+        ArrayList<Video> highlights = new ArrayList<>();
         List<Future<List<Video>>> futures = new ArrayList<>();
         final int batchSize = 100;
-        for (int round = 0; round < Math.ceil(((float) clipsIds.size()) / batchSize); round++) {
-            List<String> list = clipsIds.subList(round * batchSize, Math.min(clipsIds.size(), (round + 1) * batchSize));
+        for (int round = 0; round < Math.ceil(((float) highlightIds.size()) / batchSize); round++) {
+            List<Long> list = highlightIds.subList(round * batchSize, Math.min(highlightIds.size(), (round + 1) * batchSize));
             GetRequest getRequest = Unirest
                     .get("https://api.twitch.tv/helix/videos")
                     .queryString("first", batchSize)
@@ -36,12 +36,12 @@ public class HighlightClient extends GenericClient<Video> {
         for (Future<List<Video>> future : futures) {
             try {
                 List<Video> list = future.get();
-                if (list != null) clips.addAll(list);
+                if (list != null) highlights.addAll(list);
             } catch (ExecutionException | InterruptedException ignored) {
             }
         }
 
-        return clips;
+        return highlights;
     }
 
     public PagedResponse<Video> getAllHighlightsUncached(long broadcasterId) {
