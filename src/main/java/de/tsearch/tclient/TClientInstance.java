@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import de.tsearch.tclient.http.respone.LoginResponse;
 import kong.unirest.HttpResponse;
 import kong.unirest.Unirest;
+import lombok.Getter;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -15,6 +16,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TClientInstance {
+    @Getter
     private final Config config;
 
     protected final Gson gson;
