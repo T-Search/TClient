@@ -67,7 +67,20 @@ public class GenericClient<T> {
         builder.maxCursorFollows(maxCursorDepth);
         builder.statusCode(response.getStatus());
         String ratelimit = response.getHeaders().getFirst("Ratelimit-Remaining");
-        if (ratelimit != null) logger.trace("Ratelimit-Remaining: " + ratelimit);
+        if (ratelimit != null) {
+            logger.trace("Ratelimit-Remaining: " + ratelimit);
+            try {
+                int ratelimitI = Integer.parseInt(ratelimit);
+                if (ratelimitI > 450) {
+                    this.clientInstance.rateLimiter.setRate(10);
+                } else if (ratelimitI < 100) {
+                    clientInstance.rateLimiter.setRate(2);
+                } else if (ratelimitI < 400) {
+                    this.clientInstance.rateLimiter.setRate(5);
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
         logger.trace("Status-Code: " + response.getStatus());
         if (response.isSuccess()) {
             List<T> data = new ArrayList<>(response.getBody().getData().size());
